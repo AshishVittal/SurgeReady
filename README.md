@@ -1,155 +1,154 @@
-# SurgeReady
-
-**An AWS-based cloud reliability and auto-scaling project built with Terraform, Docker, and Amazon ECS Fargate.**
+# SurgeReady – AWS Auto-Scaling Application Infrastructure
 
 ## Project Overview
 
-SurgeReady is a cloud engineering project demonstrating how to deploy, monitor, and automatically scale a containerized web application on AWS.
+SurgeReady is a cloud infrastructure project designed to demonstrate how an application can handle sudden increases in traffic using AWS infrastructure, containerization, load balancing, and automatic scaling.
 
-The project focuses on Infrastructure as Code, container deployment, load balancing, observability, automated scaling, performance testing, and reliability engineering.
+The application is deployed using Amazon ECS with AWS Fargate, distributed across two Availability Zones, and exposed through an internet-facing Application Load Balancer.
+
+The infrastructure is provisioned using Terraform.
 
 ## Architecture
 
-The infrastructure includes:
+**Architecture flow:**
 
-- Amazon VPC with public and private subnets across two Availability Zones
+Internet Users → Internet Gateway → Application Load Balancer → Target Group → ECS Fargate Tasks → Flask Application
+
+Supporting services:
+
+- Amazon ECR – Container image storage
+- Amazon CloudWatch – Application logs, metrics, and alarms
+- Amazon SNS – Email notifications
+- Grafana Cloud – Infrastructure monitoring dashboard
+
+### Network Architecture
+
+- AWS Region: `ap-south-1`
+- VPC CIDR: `10.0.0.0/16`
+- Two Availability Zones
+- Two public subnets hosting the ALB and ECS tasks
+- Two private subnets provisioned but not currently used by ECS
 - Internet Gateway and public routing
-- Application Load Balancer (ALB)
-- Amazon ECS with AWS Fargate
-- Amazon ECR for Docker image storage
-- AWS IAM execution role
-- Amazon CloudWatch for monitoring, logging, and alarms
-- Amazon SNS for email notifications
-- Grafana Cloud for infrastructure monitoring and visualization
-- Terraform for infrastructure provisioning
+
+**Cost-conscious design:** ECS tasks currently run in public subnets with public IP addresses. This avoids NAT Gateway charges for this project.
 
 ## Technology Stack
 
-| Technology | Purpose |
+| Category | Technologies |
 |---|---|
-| AWS | Cloud infrastructure |
-| Terraform | Infrastructure as Code |
-| Docker | Application containerization |
-| Amazon ECS Fargate | Container deployment and scaling |
-| Amazon ECR | Container image registry |
-| Application Load Balancer | Traffic distribution |
-| CloudWatch | Monitoring, logs and alarms |
-| Grafana Cloud | Metrics visualization and dashboards |
-| Amazon SNS | Email notifications |
-| k6 | Load and performance testing |
-| Python and Flask | Web application |
-| Git and GitHub | Version control |
+| Cloud | AWS |
+| Infrastructure as Code | Terraform |
+| Containerization | Docker |
+| Container Registry | Amazon ECR |
+| Container Orchestration | Amazon ECS |
+| Compute | AWS Fargate |
+| Load Balancing | Application Load Balancer |
+| Application | Python, Flask |
+| Monitoring | CloudWatch, Grafana Cloud |
+| Notifications | Amazon SNS |
+| Load Testing | k6 |
 
 ## Application Endpoints
 
-- `/` - Application homepage
-- `/health` - Application health-check endpoint
-- `/work` - CPU-intensive endpoint for load testing
+| Endpoint | Purpose |
+|---|---|
+| `/` | Application homepage |
+| `/health` | Application health check |
+| `/work` | CPU-intensive workload for load testing |
 
-## Auto Scaling and Load Testing
+## ECS Configuration
 
-ECS Service Auto Scaling is configured using CPU-based target tracking.
-
+- Launch type: AWS Fargate
+- Task CPU: 256 units (0.25 vCPU)
+- Task memory: 512 MiB
+- Container port: 80
+- Desired task count: 2
 - Minimum tasks: 2
 - Maximum tasks: 4
-- Target CPU utilization: 60%
-- Scaling metric: ECSServiceAverageCPUUtilization
 
-### Load Test Results
+## Auto Scaling
 
-A five-minute k6 load test was conducted using 25 virtual users.
+ECS Service Auto Scaling uses target tracking based on average CPU utilization.
+
+| Setting | Configuration |
+|---|---|
+| Scaling policy | Target tracking |
+| Metric | ECS Service Average CPU Utilization |
+| Target CPU | 60% |
+| Minimum tasks | 2 |
+| Maximum tasks | 4 |
+| Scale-out cooldown | 60 seconds |
+| Scale-in cooldown | 60 seconds |
+
+During load testing, ECS scaled from 2 to 4 tasks and subsequently returned to 2 as demand decreased.
+
+## Load Testing Results
+
+A 5-minute k6 load test was performed against the `/work` endpoint.
 
 | Metric | Result |
 |---|---:|
-| Test duration | 5 minutes |
 | Virtual users | 25 |
+| Duration | 5 minutes |
 | Total requests | 1,217 |
-| Failed HTTP requests | 0% |
+| Throughput | 3.936 requests/sec |
+| Checks passed | 100% |
+| HTTP failures | 0% |
 | Average response time | 5.26 seconds |
-| 95th percentile response time | 10.43 seconds |
+| Median response time | 5.51 seconds |
+| 90th percentile | 9.79 seconds |
+| 95th percentile | 10.43 seconds |
+| Maximum response time | 12.88 seconds |
 
-### Autoscaling Validation
+The test demonstrated that the ECS service could scale its task count in response to increased CPU utilization while maintaining successful HTTP responses.
 
-The test demonstrated the following behaviour:
-
-1. ECS initially operated with 2 running tasks.
-2. k6 generated simulated application traffic.
-3. Increased CPU utilization triggered ECS target-tracking scaling.
-4. ECS increased the desired task count to 4.
-5. All 4 tasks reached RUNNING state.
-6. After traffic subsided, the service scaled back to 2 running tasks.
-
-Both scale-out and scale-in were successfully validated.
-
-## Monitoring and Observability
+## Monitoring and Alerting
 
 ### Amazon CloudWatch
 
-CloudWatch is used for:
-
 - ECS CPU utilization monitoring
 - ECS memory utilization monitoring
-- Application and container logs
-- CPU and memory alarms
-- Integration with Amazon SNS notifications
+- ECS application logs
+- ECS CPU and memory alarms configured above 70%
+- SNS email notifications for alarm notifications
 
-CloudWatch alarms monitor:
-
-- ECS CPU utilization above 70%
-- ECS memory utilization above 70%
-
-Amazon SNS delivers email notifications when an alarm enters its alarm state.
-
-Direct SNS email delivery was successfully tested.
+CloudWatch alarms provide monitoring and notifications, while ECS target tracking independently manages service scaling.
 
 ### Grafana Cloud Dashboard
 
-A Grafana Cloud dashboard was configured using Amazon CloudWatch as its data source.
-
-The dashboard contains five monitoring panels:
+The Grafana dashboard uses Amazon CloudWatch as its data source and contains five monitoring panels:
 
 1. ECS CPU Utilization
 2. ECS Memory Utilization
 3. ECS Running Task Count
-4. ALB Request Count
-5. ALB Response Time
+4. Application Load Balancer Request Count
+5. Application Load Balancer Target Response Time
 
-The dashboard provides visibility into application traffic, resource utilization, task scaling behaviour, and load balancer response performance.
+## Infrastructure as Code
 
-## Completed Features
+Terraform provisions the AWS infrastructure, including:
 
-- [x] VPC and multi-AZ subnet infrastructure
-- [x] Internet Gateway and routing
-- [x] ALB and application security groups
-- [x] ECR repository
-- [x] Docker image build and push
-- [x] ECS Fargate cluster and service
-- [x] Application Load Balancer
-- [x] Application health-check endpoint
-- [x] CloudWatch logs and alarms
-- [x] SNS email notification setup
-- [x] Terraform infrastructure configuration
-- [x] ECS target-tracking auto scaling
-- [x] k6 load testing
-- [x] Autoscaling scale-out and scale-in validation
-- [x] Grafana Cloud dashboard with five monitoring panels
-- [x] GitHub repository publication
+- VPC and subnets
+- Internet Gateway and route tables
+- Security groups
+- Application Load Balancer and target group
+- ECS cluster, task definition, and service
+- IAM execution role
+- CloudWatch log group and alarms
+- ECS Service Auto Scaling
 
-## Planned Improvements
+## Repository
 
-- [ ] GitHub Actions CI/CD using OIDC
-- [ ] Controlled failure and recovery testing
-- [ ] Architecture diagram and dashboard screenshots
-- [ ] Cost optimization and deployment lifecycle improvements
+GitHub: https://github.com/AshishVittal/SurgeReady
 
-## Project Goal
+## Future Improvements
 
-The goal of SurgeReady is to demonstrate practical Cloud Engineering and Site Reliability Engineering concepts through a hands-on AWS deployment.
+- Implement GitHub Actions CI/CD with AWS IAM OIDC federation.
+- Add controlled failure and recovery testing.
+- Improve infrastructure security by moving ECS tasks into private subnets with an appropriate private image-pull and logging connectivity design.
+- Add architecture and monitoring screenshots.
+- Improve cost optimization and deployment lifecycle management.
 
-The project explores infrastructure automation, container deployment, observability, performance testing, automated scaling, and reliability validation.
+## Learning Outcomes
 
-## Author
-
-**Ashish Vittal**
-
-GitHub: [AshishVittal](https://github.com/AshishVittal)
+This project provided practical experience with AWS networking, Terraform, Docker, ECS Fargate, load balancing, service auto scaling, monitoring, alerting, and infrastructure troubleshooting.
