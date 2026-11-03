@@ -124,6 +124,20 @@ The Grafana dashboard uses Amazon CloudWatch as its data source and contains fiv
 4. Application Load Balancer Request Count
 5. Application Load Balancer Target Response Time
 
+#### Grafana Dashboard Screenshots
+
+**ECS CPU and Memory Utilization**
+
+![ECS CPU and Memory](screenshots/ecs-cpu-memory.png)
+
+**Application Load Balancer Metrics**
+
+![ALB Request Count and Target Response Time](screenshots/alb-metrics.png)
+
+**ECS Running Task Count and Auto Scaling**
+
+![ECS Running Task Count](screenshots/ecs-running-task-count.png)
+
 ## Infrastructure as Code
 
 Terraform provisions the AWS infrastructure, including:
