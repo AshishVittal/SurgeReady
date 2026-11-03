@@ -151,6 +151,55 @@ Terraform provisions the AWS infrastructure, including:
 - CloudWatch log group and alarms
 - ECS Service Auto Scaling
 
+## AWS Architecture
+
+```mermaid
+flowchart TB
+    Internet((Internet))
+
+    subgraph AWS["AWS Cloud - ap-south-1"]
+        IGW[Internet Gateway]
+
+        subgraph VPC["SurgeReady VPC - 10.0.0.0/16"]
+            subgraph AZ1["Availability Zone - ap-south-1a"]
+                PUB1["Public Subnet - 10.0.1.0/24"]
+                TASK1["ECS Fargate Task"]
+            end
+
+            subgraph AZ2["Availability Zone - ap-south-1b"]
+                PUB2["Public Subnet - 10.0.3.0/24"]
+                TASK2["ECS Fargate Task"]
+            end
+
+            ALB["Application Load Balancer"]
+            TG["Target Group - IP"]
+            ECS["ECS Fargate Service"]
+            ASG["ECS Service Auto Scaling<br/>Min: 2 | Max: 4"]
+        end
+
+        CW["Amazon CloudWatch<br/>Metrics and Logs"]
+        SNS["Amazon SNS"]
+    end
+
+    Internet --> IGW
+    IGW --> ALB
+    ALB --> TG
+    TG --> TASK1
+    TG --> TASK2
+
+    ECS --> TASK1
+    ECS --> TASK2
+    ASG --> ECS
+
+    TASK1 --> CW
+    TASK2 --> CW
+    CW --> SNS
+    SNS --> Email["Email Notifications"]
+
+    Grafana["Grafana Cloud Dashboard"]
+    CW -. "CloudWatch Data Source" .-> Grafana
+```
+
 ## Repository
 
 GitHub: https://github.com/AshishVittal/SurgeReady
