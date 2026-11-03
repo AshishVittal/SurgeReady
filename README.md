@@ -20,6 +20,7 @@ The infrastructure includes:
 - AWS IAM execution role
 - Amazon CloudWatch for monitoring, logging, and alarms
 - Amazon SNS for email notifications
+- Grafana Cloud for infrastructure monitoring and visualization
 - Terraform for infrastructure provisioning
 
 ## Technology Stack
@@ -33,6 +34,7 @@ The infrastructure includes:
 | Amazon ECR | Container image registry |
 | Application Load Balancer | Traffic distribution |
 | CloudWatch | Monitoring, logs and alarms |
+| Grafana Cloud | Metrics visualization and dashboards |
 | Amazon SNS | Email notifications |
 | k6 | Load and performance testing |
 | Python and Flask | Web application |
@@ -72,14 +74,24 @@ The test demonstrated the following behaviour:
 
 1. ECS initially operated with 2 running tasks.
 2. k6 generated simulated application traffic.
-3. CloudWatch CPU alarm entered ALARM state.
-4. ECS Auto Scaling increased the desired task count to 4.
+3. Increased CPU utilization triggered ECS target-tracking scaling.
+4. ECS increased the desired task count to 4.
 5. All 4 tasks reached RUNNING state.
 6. After traffic subsided, the service scaled back to 2 running tasks.
 
 Both scale-out and scale-in were successfully validated.
 
-## Monitoring and Alerting
+## Monitoring and Observability
+
+### Amazon CloudWatch
+
+CloudWatch is used for:
+
+- ECS CPU utilization monitoring
+- ECS memory utilization monitoring
+- Application and container logs
+- CPU and memory alarms
+- Integration with Amazon SNS notifications
 
 CloudWatch alarms monitor:
 
@@ -89,6 +101,20 @@ CloudWatch alarms monitor:
 Amazon SNS delivers email notifications when an alarm enters its alarm state.
 
 Direct SNS email delivery was successfully tested.
+
+### Grafana Cloud Dashboard
+
+A Grafana Cloud dashboard was configured using Amazon CloudWatch as its data source.
+
+The dashboard contains five monitoring panels:
+
+1. ECS CPU Utilization
+2. ECS Memory Utilization
+3. ECS Running Task Count
+4. ALB Request Count
+5. ALB Response Time
+
+The dashboard provides visibility into application traffic, resource utilization, task scaling behaviour, and load balancer response performance.
 
 ## Completed Features
 
@@ -106,14 +132,15 @@ Direct SNS email delivery was successfully tested.
 - [x] ECS target-tracking auto scaling
 - [x] k6 load testing
 - [x] Autoscaling scale-out and scale-in validation
+- [x] Grafana Cloud dashboard with five monitoring panels
 - [x] GitHub repository publication
 
 ## Planned Improvements
 
-- [ ] Grafana dashboards for application and infrastructure observability
 - [ ] GitHub Actions CI/CD using OIDC
 - [ ] Controlled failure and recovery testing
-- [ ] Architecture diagram and test evidence
+- [ ] Architecture diagram and dashboard screenshots
+- [ ] Cost optimization and deployment lifecycle improvements
 
 ## Project Goal
 
@@ -123,6 +150,6 @@ The project explores infrastructure automation, container deployment, observabil
 
 ## Author
 
-Ashish Vittal
+**Ashish Vittal**
 
 GitHub: [AshishVittal](https://github.com/AshishVittal)
