@@ -300,10 +300,11 @@ resource "aws_lb_listener" "app" {
 
 # ECS Service
 resource "aws_ecs_service" "app" {
+
   name            = "surge-ready-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
+  desired_count   = 2
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -322,6 +323,10 @@ resource "aws_ecs_service" "app" {
     container_port   = 80
   }
 
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
   depends_on = [
     aws_lb_listener.app,
     aws_iam_role_policy_attachment.ecs_task_execution
@@ -332,6 +337,7 @@ resource "aws_ecs_service" "app" {
   }
 }
 
+# CloudWatch Memory Alarm
 resource "aws_cloudwatch_metric_alarm" "high_memory" {
   alarm_name          = "surge-ready-high-memory"
   alarm_description   = "Triggers when ECS service memory utilization exceeds 70%."
@@ -353,6 +359,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory" {
   treat_missing_data = "notBreaching"
 }
 
+# CloudWatch CPU Alarm
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_name          = "surge-ready-high-cpu"
   alarm_description   = "Triggers when ECS service CPU utilization exceeds 70%."
@@ -373,6 +380,8 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
 
   treat_missing_data = "notBreaching"
 }
+
+# SNS Topic
 resource "aws_sns_topic" "alerts" {
   name = "surge-ready-alerts"
 
@@ -380,8 +389,38 @@ resource "aws_sns_topic" "alerts" {
     Name = "surge-ready-alerts"
   }
 }
+
+# SNS Email Subscription
 resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = "ashishvitta458@gmail.com"
+}
+
+# ECS Service Auto Scaling Target
+resource "aws_appautoscaling_target" "ecs_target" {
+  max_capacity       = 4
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.app.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+# ECS CPU Target Tracking Scaling Policy
+resource "aws_appautoscaling_policy" "ecs_cpu_scaling" {
+  name               = "surge-ready-cpu-scaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 60
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+  }
 }
